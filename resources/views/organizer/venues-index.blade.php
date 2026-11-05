@@ -46,7 +46,10 @@
                         </td>
                         <td class="text-center">{{ $venue->events_count }}</td>
                         <td class="text-end text-nowrap">
-                            <a href="{{ route('organizer.venues.edit', $venue) }}" class="btn btn-sm btn-outline-primary">
+                            <a href="{{ route('organizer.venues.map.show', $venue) }}" class="btn btn-sm btn-outline-success" title="Mapa de butacas">
+                                <i class="bi bi-grid-3x3-gap"></i> Mapa
+                            </a>
+                            <a href="{{ route('organizer.venues.edit', $venue) }}" class="btn btn-sm btn-outline-primary" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </a>
                             <form method="POST" action="{{ route('organizer.venues.destroy', $venue) }}" class="d-inline"

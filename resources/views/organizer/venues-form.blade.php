@@ -79,10 +79,18 @@
     <div class="col-lg-4">
         <div class="card p-4">
             <h2 class="h6 fw-bold"><i class="bi bi-grid-3x3-gap"></i> Mapa de butacas</h2>
-            <p class="text-muted small mb-0">
-                Después de guardar el lugar vas a poder dibujar sus sectores (campo, plateas, palcos) y las butacas numeradas.
-                Esa función llega en el próximo paso.
-            </p>
+            @if ($venue->exists)
+                <p class="text-muted small">
+                    Armá los sectores del lugar (campo, plateas, palcos) y generá las butacas numeradas.
+                </p>
+                <a href="{{ route('organizer.venues.map.show', $venue) }}" class="btn btn-outline-success w-100">
+                    <i class="bi bi-grid-3x3-gap"></i> {{ $venue->has_seat_map ? 'Editar mapa' : 'Armar mapa' }}
+                </a>
+            @else
+                <p class="text-muted small mb-0">
+                    Después de guardar el lugar vas a poder armar sus sectores (campo, plateas, palcos) y las butacas numeradas.
+                </p>
+            @endif
         </div>
     </div>
 </div>

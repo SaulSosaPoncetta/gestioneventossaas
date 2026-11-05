@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Organizer\DashboardController;
 use App\Http\Controllers\Organizer\EventController;
+use App\Http\Controllers\Organizer\SeatMapController;
 use App\Http\Controllers\Organizer\VenueController;
 use Illuminate\Support\Facades\Route;
 
@@ -64,6 +65,16 @@ Route::middleware(['auth', 'organizer'])->prefix('panel')->name('organizer.')->g
             ->except('show')
             ->parameters(['lugares' => 'venue'])
             ->names('venues');
+
+        // Mapa de butacas de cada lugar
+        Route::prefix('lugares/{venue}/mapa')->name('venues.map.')->controller(SeatMapController::class)->group(function () {
+            Route::get('/', 'show')->name('show');
+            Route::post('/sectores', 'storeSection')->name('sections.store');
+            Route::put('/sectores/{section}', 'updateSection')->name('sections.update');
+            Route::delete('/sectores/{section}', 'destroySection')->name('sections.destroy');
+            Route::post('/sectores/{section}/butacas', 'generateSeats')->name('sections.generate');
+            Route::patch('/butacas', 'updateSeats')->name('seats.update');
+        });
     });
 });
 
