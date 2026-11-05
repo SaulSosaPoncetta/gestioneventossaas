@@ -8,6 +8,7 @@ use App\Models\Event;
 use App\Models\Order;
 use App\Models\Organizer;
 use App\Models\Ticket;
+use App\Services\EventSeatService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -17,6 +18,10 @@ use Illuminate\View\View;
 
 class EventController extends Controller
 {
+    public function __construct(private EventSeatService $seats)
+    {
+    }
+
     private function organizer(): Organizer
     {
         return app('currentOrganizer');
@@ -85,7 +90,7 @@ class EventController extends Controller
     {
         $this->ensureOwned($event);
 
-        $event->load(['venue', 'ticketTypes.lots']);
+        $event->load(['venue.sections', 'ticketTypes.lots', 'ticketTypes.section']);
 
         $stats = [
             'sold'       => $event->tickets()->where('status', '!=', Ticket::STATUS_CANCELLED)->count(),
@@ -94,7 +99,17 @@ class EventController extends Controller
             'revenue'    => (float) $event->orders()->paid()->sum('subtotal') - (float) $event->orders()->paid()->sum('discount'),
         ];
 
-        return view('organizer.events-show', compact('event', 'stats'));
+        // Entradas emitidas por tipo y estado de butacas por tipo (eventos numerados)
+        $soldByType = $event->tickets()
+            ->where('status', '!=', Ticket::STATUS_CANCELLED)
+            ->selectRaw('ticket_type_id, count(*) as total')
+            ->groupBy('ticket_type_id')
+            ->pluck('total', 'ticket_type_id');
+
+        $seatCounts = $event->is_seated ? $this->seats->countsByType($event) : [];
+        $sections = $event->venue?->sections ?? collect();
+
+        return view('organizer.events-show', compact('event', 'stats', 'soldByType', 'seatCounts', 'sections'));
     }
 
     public function edit(Event $event): View
@@ -132,6 +147,10 @@ class EventController extends Controller
 
         $event->update($data);
 
+        if ($this->seats->shouldSync($event)) {
+            $this->seats->sync($event);
+        }
+
         return redirect()->route('organizer.events.show', $event)->with('success', 'Evento actualizado.');
     }
 
@@ -157,13 +176,27 @@ class EventController extends Controller
                 if (! $event->lots()->exists()) {
                     return back()->with('error', 'Cargá al menos un tipo de entrada con su lote de precio antes de publicar.');
                 }
+                if ($event->is_seated) {
+                    $hasSeatedType = $event->ticketTypes()
+                        ->whereHas('section', fn ($q) => $q->where('type', 'seated'))
+                        ->exists();
+                    if (! $hasSeatedType) {
+                        return back()->with('error', 'El evento es numerado: asociá al menos un tipo de entrada a un sector con butacas.');
+                    }
+                }
                 $event->update([
                     'status'       => Event::STATUS_PUBLISHED,
                     'published_at' => $event->published_at ?? now(),
                 ]);
-                $msg = $organizer->isMpConnected()
-                    ? 'Evento publicado.'
-                    : 'Evento publicado. Vinculá tu cuenta de Mercado Pago para que se puedan comprar entradas.';
+                $msg = 'Evento publicado.';
+                if ($event->is_seated) {
+                    $this->seats->sync($event);
+                    $total = $event->eventSeats()->count();
+                    $msg .= " Butacas habilitadas para la venta: {$total}.";
+                }
+                if (! $organizer->isMpConnected()) {
+                    $msg .= ' Vinculá tu cuenta de Mercado Pago para que se puedan comprar entradas.';
+                }
                 break;
 
             case 'pause':
@@ -177,6 +210,8 @@ class EventController extends Controller
                     return back()->with('error', 'El evento ya tiene órdenes: podés pausarlo, pero no volverlo a borrador.');
                 }
                 $event->update(['status' => Event::STATUS_DRAFT]);
+                // Sin órdenes, las butacas del evento se liberan para poder editar el mapa del lugar
+                $event->eventSeats()->delete();
                 $msg = 'El evento volvió a borrador.';
                 break;
 

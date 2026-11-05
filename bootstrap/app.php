@@ -17,6 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'platform.admin' => \App\Http\Middleware\EnsurePlatformAdmin::class,
         ]);
 
+        // Mercado Pago no envía token CSRF
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/*',
+        ]);
+
         // Usuario ya logueado que entra a /ingresar o /registro
         $middleware->redirectUsersTo(fn () => route('home'));
     })

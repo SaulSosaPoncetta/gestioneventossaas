@@ -72,7 +72,9 @@
                 <a class="nav-link @if(request()->routeIs('organizer.venues.*')) active @endif" href="{{ route('organizer.venues.index') }}">
                     <i class="bi bi-geo-alt me-2"></i>Lugares y butacas
                 </a>
-                <a class="nav-link disabled" href="#"><i class="bi bi-percent me-2"></i>Cupones</a>
+                <a class="nav-link @if(request()->routeIs('organizer.coupons.*')) active @endif" href="{{ route('organizer.coupons.index') }}">
+                    <i class="bi bi-percent me-2"></i>Cupones
+                </a>
             @endif
         </nav>
 
@@ -87,7 +89,10 @@
             <div class="section-title mb-2">Configuración</div>
             <nav class="nav flex-column gap-1 mb-3">
                 <a class="nav-link disabled" href="#"><i class="bi bi-people me-2"></i>Equipo</a>
-                <a class="nav-link disabled" href="#"><i class="bi bi-wallet2 me-2"></i>Mercado Pago</a>
+                <a class="nav-link @if(request()->routeIs('organizer.mercadopago.*')) active @endif" href="{{ route('organizer.mercadopago.show') }}">
+                    <i class="bi bi-wallet2 me-2"></i>Mercado Pago
+                    @unless ($currentOrganizer->isMpConnected())<span class="badge text-bg-warning ms-1">!</span>@endunless
+                </a>
             </nav>
         @endif
 

@@ -5,6 +5,8 @@
  *               por sector o arrastrando un rectángulo con el mouse.
  * Modo "select" (compra): el comprador elige butacas disponibles, con un tope.
  *
+ * Opciones extra: seatColor(seat, section) en modo edición para colorear por estado.
+ *
  * Uso:
  *   const map = new SeatMap('#mapa', data, {
  *       mode: 'select',
@@ -64,6 +66,7 @@
                 cell: 24,            // píxeles por unidad con zoom 1
                 maxSelected: Infinity,
                 seatState: null,
+                seatColor: null,     // (seat, section) => color | null  (modo edición)
                 onChange: null,
                 onLimit: null,
                 stageLabel: 'ESCENARIO',
@@ -180,7 +183,8 @@
                 if (!s.a) {
                     fill = '#fff'; stroke = '#94a3b8'; textFill = '#94a3b8'; dash = '0.12 0.08';
                 } else {
-                    fill = KIND_COLORS[s.k] || item.section.color;
+                    const custom = this.opts.seatColor ? this.opts.seatColor(s, item.section) : null;
+                    fill = custom || KIND_COLORS[s.k] || item.section.color;
                 }
             } else {
                 const available = this.state(item) === 'available';
