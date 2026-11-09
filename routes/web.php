@@ -1,20 +1,27 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminReportController;
 use App\Http\Controllers\Admin\OrganizerController as AdminOrganizerController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\OrganizerRegisterController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\Organizer\CheckinController;
 use App\Http\Controllers\Organizer\CouponController;
 use App\Http\Controllers\Organizer\DashboardController;
 use App\Http\Controllers\Organizer\EventController;
 use App\Http\Controllers\Organizer\EventSeatController;
 use App\Http\Controllers\Organizer\MercadoPagoController;
+use App\Http\Controllers\Organizer\OrderController;
+use App\Http\Controllers\Organizer\ReportController;
+use App\Http\Controllers\Organizer\TeamController;
 use App\Http\Controllers\Organizer\SeatMapController;
 use App\Http\Controllers\Organizer\TicketLotController;
 use App\Http\Controllers\Organizer\TicketTypeController;
 use App\Http\Controllers\Organizer\VenueController;
+use App\Http\Controllers\OrderManageController;
+use App\Http\Controllers\TicketPublicController;
 use App\Http\Controllers\PublicEventController;
 use App\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
@@ -45,6 +52,24 @@ Route::prefix('compra/{order}')->name('checkout.')->controller(CheckoutControlle
     Route::get('/entradas.pdf', 'pdf')->name('pdf');
     Route::post('/reenviar', 'resend')->middleware('throttle:3,10')->name('resend');
 });
+
+// Asistentes y transferencias de una compra
+Route::prefix('compra/{order}')->name('checkout.')->controller(OrderManageController::class)->group(function () {
+    Route::get('/asistentes', 'edit')->name('attendees');
+    Route::post('/acceso', 'requestAccess')->middleware('throttle:3,10')->name('access.request');
+    Route::get('/acceso', 'access')->middleware('signed')->name('access');
+    Route::patch('/entradas/{ticket:code}', 'assign')->middleware('throttle:30,1')->name('tickets.assign');
+    Route::post('/entradas/{ticket:code}/transferir', 'transfer')->middleware('throttle:10,1')->name('tickets.transfer');
+});
+
+// Entrada individual para quien la recibió por transferencia (enlace firmado)
+Route::get('/entrada/{ticket:code}', [TicketPublicController::class, 'show'])->middleware('signed')->name('tickets.show');
+Route::get('/entrada/{ticket:code}/pdf', [TicketPublicController::class, 'pdf'])->middleware('signed')->name('tickets.pdf');
+
+Route::get('/mis-compras', [OrderManageController::class, 'mine'])->middleware('auth')->name('orders.mine');
+
+// Escáner de puerta (PWA). Se autentica con token contra /api/scanner
+Route::view('/escaner', 'escaner')->name('scanner');
 
 // Notificaciones de Mercado Pago (sin CSRF: ver bootstrap/app.php)
 Route::post('/webhooks/mercadopago', WebhookController::class)->middleware('throttle:120,1')->name('webhooks.mercadopago');
@@ -89,6 +114,9 @@ Route::middleware(['auth', 'organizer'])->prefix('panel')->name('organizer.')->g
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/cambiar-productora', [DashboardController::class, 'switch'])->name('switch');
 
+    // Tablero de ingresos (también para el rol "puerta")
+    Route::get('eventos/{event}/ingresos', [CheckinController::class, 'show'])->name('events.checkins');
+
     // El rol "puerta" solo usa el escáner; el resto del panel es para dueño, admin y staff
     Route::middleware('organizer:owner,admin,staff')->group(function () {
         Route::resource('eventos', EventController::class)
@@ -128,7 +156,38 @@ Route::middleware(['auth', 'organizer'])->prefix('panel')->name('organizer.')->g
             Route::post('/sectores/{section}/butacas', 'generateSeats')->name('sections.generate');
             Route::patch('/butacas', 'updateSeats')->name('seats.update');
         });
+
+        // Órdenes
+        Route::get('ordenes', [OrderController::class, 'index'])->name('orders.index');
+        Route::get('ordenes/exportar', [OrderController::class, 'export'])->name('orders.export');
+        Route::get('ordenes/{order}', [OrderController::class, 'show'])->name('orders.show');
+        Route::post('ordenes/{order}/reenviar', [OrderController::class, 'resend'])->middleware('throttle:10,1')->name('orders.resend');
+
+        // Reportes y liquidación
+        Route::get('reportes', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('reportes/{event}', [ReportController::class, 'show'])->name('reports.show');
+        Route::get('reportes/{event}/asistentes', [ReportController::class, 'attendees'])->name('reports.attendees');
     });
+
+    // Devoluciones y equipo (solo dueño y administradores)
+    Route::middleware('organizer:owner,admin')->group(function () {
+        Route::post('ordenes/{order}/devolver', [OrderController::class, 'refund'])->name('orders.refund');
+        Route::post('eventos/{event}/devolver-todo', [OrderController::class, 'refundEvent'])->name('events.refund-all');
+
+        Route::get('equipo', [TeamController::class, 'index'])->name('team.index');
+        Route::post('equipo', [TeamController::class, 'store'])->name('team.store');
+        Route::patch('equipo/{user}', [TeamController::class, 'update'])->name('team.update');
+        Route::delete('equipo/{user}', [TeamController::class, 'destroy'])->name('team.destroy');
+    });
+
+    // Vinculación de Mercado Pago (solo dueño y administradores)
+    Route::middleware('organizer:owner,admin')->prefix('mercadopago')->name('mercadopago.')
+        ->controller(MercadoPagoController::class)->group(function () {
+            Route::get('/', 'show')->name('show');
+            Route::post('/conectar', 'connect')->name('connect');
+            Route::post('/manual', 'manual')->name('manual');
+            Route::delete('/', 'disconnect')->name('disconnect');
+        });
 });
 
 /*
@@ -141,4 +200,5 @@ Route::middleware(['auth', 'platform.admin'])->prefix('admin')->name('admin.')->
     Route::redirect('/', '/admin/productoras')->name('home');
     Route::get('/productoras', [AdminOrganizerController::class, 'index'])->name('organizers.index');
     Route::patch('/productoras/{organizer}', [AdminOrganizerController::class, 'update'])->name('organizers.update');
+    Route::get('/recaudacion', [AdminReportController::class, 'index'])->name('reports');
 });

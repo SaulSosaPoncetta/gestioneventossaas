@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\URL;
 
 class Ticket extends Model
 {
@@ -149,5 +150,35 @@ class Ticket extends Model
     public function seatLabel(): ?string
     {
         return $this->eventSeat?->seat?->displayName();
+    }
+
+    /** Cantidad de transferencias (usa transfers_count si se cargó con withCount) */
+    public function transfersCount(): int
+    {
+        return (int) ($this->transfers_count ?? $this->transfers()->count());
+    }
+
+    /** Se transfirió a otra persona: el comprador ya no tiene el QR vigente */
+    public function isTransferredAway(): bool
+    {
+        if ($this->transfersCount() === 0) {
+            return false;
+        }
+
+        return strcasecmp((string) $this->attendee_email, (string) $this->order->buyer_email) !== 0;
+    }
+
+    /**
+     * Enlace firmado a esta entrada (para el titular que la recibió).
+     * Incluye la versión: al volver a transferirla, el enlace anterior deja de servir.
+     */
+    public function publicUrl(): string
+    {
+        return URL::signedRoute('tickets.show', ['ticket' => $this->code, 'v' => $this->version]);
+    }
+
+    public function publicPdfUrl(): string
+    {
+        return URL::signedRoute('tickets.pdf', ['ticket' => $this->code, 'v' => $this->version]);
     }
 }

@@ -75,6 +75,7 @@
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><span class="dropdown-item-text small text-muted">{{ auth()->user()->email }}</span></li>
                             <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ route('orders.mine') }}"><i class="bi bi-ticket-perforated"></i> Mis compras</a></li>
                             <li>
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf

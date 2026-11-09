@@ -87,8 +87,12 @@
             <ul class="small text-muted ps-3 mb-3">
                 <li>El comprador paga el valor de las entradas más un <strong>cargo por servicio del {{ $pct($serviceFee) }}</strong>.</li>
                 <li>El dinero se acredita en <strong>tu cuenta de Mercado Pago</strong>, con los plazos y costos de tu cuenta.</li>
-                <li>La plataforma retiene automáticamente el cargo por servicio
-                    @if ($commission > 0) y una <strong>comisión del {{ $pct($commission) }}</strong> sobre el valor de las entradas@endif.</li>
+                <li>
+                    La plataforma retiene automáticamente el cargo por servicio
+                    @if ($commission > 0)
+                        y una <strong>comisión del {{ $pct($commission) }}</strong> sobre el valor de las entradas
+                    @endif
+                </li>
             </ul>
             <div class="bg-light rounded p-3 small">
                 <div class="fw-semibold mb-1">Ejemplo con una entrada de $ 10.000</div>

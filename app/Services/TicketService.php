@@ -62,14 +62,22 @@ class TicketService
             ->update(['status' => Ticket::STATUS_CANCELLED]);
     }
 
-    /** Entradas vigentes de la orden, con lo necesario para mostrarlas */
-    public function printable(Order $order): Collection
+    /**
+     * Entradas vigentes de la orden, con lo necesario para mostrarlas.
+     * Por defecto no incluye las transferidas a otra persona (el comprador ya no tiene su QR).
+     */
+    public function printable(Order $order, bool $includeTransferred = false): Collection
     {
-        return $order->tickets()
+        $tickets = $order->tickets()
             ->where('status', '!=', Ticket::STATUS_CANCELLED)
-            ->with(['ticketType', 'eventSeat.seat.section', 'event'])
+            ->with(['ticketType', 'eventSeat.seat.section', 'event', 'order'])
+            ->withCount('transfers')
             ->orderBy('id')
             ->get();
+
+        return $includeTransferred
+            ? $tickets
+            : $tickets->reject(fn (Ticket $t) => $t->isTransferredAway())->values();
     }
 
     /** Imagen QR de cada entrada: [ticket_id => data URI] */
@@ -78,11 +86,11 @@ class TicketService
         return $tickets->mapWithKeys(fn (Ticket $t) => [$t->id => $this->qr->ticketImage($t, $size)])->all();
     }
 
-    /** PDF con una entrada por página */
-    public function pdf(Order $order): DomPdf
+    /** PDF con una entrada por página (todas las de la orden o solo las indicadas) */
+    public function pdf(Order $order, ?Collection $tickets = null): DomPdf
     {
         $order->loadMissing(['event.venue', 'organizer']);
-        $tickets = $this->printable($order);
+        $tickets ??= $this->printable($order);
 
         return Pdf::loadView('pdf.tickets-pdf', [
             'order'   => $order,
@@ -91,8 +99,18 @@ class TicketService
         ])->setPaper('a4');
     }
 
-    public function pdfFilename(Order $order): string
+    /** PDF de una sola entrada (para quien la recibió por transferencia) */
+    public function ticketPdf(Ticket $ticket): DomPdf
     {
-        return 'entradas-' . Str::slug($order->event->title) . '-' . strtoupper(substr($order->uuid, 0, 8)) . '.pdf';
+        $ticket->load(['ticketType', 'eventSeat.seat.section', 'event', 'order']);
+
+        return $this->pdf($ticket->order, collect([$ticket]));
+    }
+
+    public function pdfFilename(Order $order, ?Ticket $ticket = null): string
+    {
+        $suffix = $ticket ? $ticket->code : strtoupper(substr($order->uuid, 0, 8));
+
+        return 'entradas-' . Str::slug($order->event->title) . '-' . $suffix . '.pdf';
     }
 }

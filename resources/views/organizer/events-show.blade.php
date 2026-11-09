@@ -75,6 +75,7 @@
                     @if ($event->is_seated && $event->venue)
                         <a href="{{ route('organizer.events.seats', $event) }}" class="btn btn-outline-success"><i class="bi bi-grid-3x3-gap"></i> Butacas</a>
                     @endif
+                    <a href="{{ route('organizer.events.checkins', $event) }}" class="btn btn-outline-dark"><i class="bi bi-qr-code-scan"></i> Ingresos</a>
 
                     @php
                         $actions = [];

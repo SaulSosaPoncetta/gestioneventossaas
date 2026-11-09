@@ -9,11 +9,14 @@
             <h1 class="h4 fw-bold mb-0"><i class="bi bi-shield-lock"></i> Productoras</h1>
             <span class="text-muted">Aprobación, suspensión y comisión de cada productora</span>
         </div>
+        <div class="d-flex gap-2">
+        <a href="{{ route('admin.reports') }}" class="btn btn-outline-primary"><i class="bi bi-cash-coin"></i> Recaudación</a>
         @if ($pendingCount)
             <a href="{{ route('admin.organizers.index', ['status' => 'pending']) }}" class="btn btn-warning">
                 <i class="bi bi-hourglass-split"></i> {{ $pendingCount }} pendiente(s) de aprobación
             </a>
         @endif
+        </div>
     </div>
 
     <form method="GET" class="row g-2 mb-3">

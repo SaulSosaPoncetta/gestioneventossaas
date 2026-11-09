@@ -13,7 +13,8 @@
     ];
     [$stLabel, $stColor, $stIcon] = $statuses[$order->status] ?? [$order->status, 'secondary', 'bi-circle'];
     $canPay = $order->isPending() && ! $order->reservationExpired();
-    $missingAttendees = $order->event->is_nominative && $tickets->contains(fn ($t) => empty($t->attendee_name) || empty($t->attendee_dni));
+    $missingAttendees = $order->event->is_nominative
+        && $tickets->contains(fn ($t) => ! $t->isTransferredAway() && (empty($t->attendee_name) || empty($t->attendee_dni)));
 @endphp
 
 @push('styles')
@@ -70,6 +71,9 @@
                         @csrf
                         <button class="btn btn-outline-success"><i class="bi bi-envelope"></i> Reenviar por mail</button>
                     </form>
+                    @if ($order->event->is_nominative || $order->event->allow_transfers)
+                        <a href="{{ route('checkout.attendees', $order) }}" class="btn btn-outline-primary"><i class="bi bi-people"></i> Asistentes y transferencias</a>
+                    @endif
                 </div>
             </div>
         @elseif ($order->status === 'refunded')
@@ -93,11 +97,27 @@
             <div class="alert alert-warning">
                 <i class="bi bi-person-badge"></i>
                 Las entradas de este evento son <strong>nominativas</strong>: completá el nombre y DNI de cada asistente antes del evento.
+                <a href="{{ route('checkout.attendees', $order) }}" class="alert-link">Completar ahora</a>
             </div>
         @endif
 
         <div class="row g-3 mb-4">
             @foreach ($tickets as $ticket)
+                @if ($ticket->isTransferredAway())
+                    <div class="col-md-6">
+                        <div class="ticket-card bg-light h-100 p-3 d-flex align-items-center gap-3">
+                            <i class="bi bi-send-check fs-1 text-info"></i>
+                            <div>
+                                <div class="fw-bold">{{ $ticket->ticketType->name }} <span class="small text-muted font-monospace">{{ $ticket->code }}</span></div>
+                                @if ($ticket->eventSeat)
+                                    <div class="small">{{ $ticket->eventSeat->seat->displayName() }}</div>
+                                @endif
+                                <div class="small text-muted">Transferida a {{ $ticket->attendee_name }} ({{ $ticket->attendee_email }}). Tu QR anterior quedó anulado.</div>
+                            </div>
+                        </div>
+                    </div>
+                    @continue
+                @endif
                 <div class="col-md-6">
                     <div class="ticket-card bg-white h-100 {{ $ticket->isUsed() ? 'is-used' : '' }}">
                         <div class="p-3 d-flex gap-3 align-items-center">

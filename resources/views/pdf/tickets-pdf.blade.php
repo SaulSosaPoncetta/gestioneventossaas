@@ -74,7 +74,7 @@
                         @endif
 
                         <div class="label">Compra</div>
-                        <div class="value" style="font-size: 11px;">#{{ strtoupper(substr($order->uuid, 0, 8)) }} · {{ $order->buyer_name }}</div>
+                        <div class="value" style="font-size: 11px;">#{{ strtoupper(substr($order->uuid, 0, 8)) }}@if ($ticket->version > 1) · emitida por transferencia @endif</div>
                     </td>
                     <td class="qr" style="width: 45%;">
                         <img src="{{ $qrs[$ticket->id] }}" alt="QR">
@@ -89,7 +89,7 @@
             Esta entrada es personal y válida para un solo ingreso: el QR se invalida al escanearse.
             No compartas ni publiques la imagen.
             @if ($order->event->is_nominative) En el ingreso se puede pedir el DNI del asistente. @endif
-            Organiza: {{ $order->organizer->name }}. Ver tu compra: {{ route('checkout.show', $order) }}
+            Organiza: {{ $order->organizer->name }}. Si la transferís, se genera un QR nuevo y este deja de servir.
         </div>
     </div>
     @if (! $loop->last)<div class="page-break"></div>@endif

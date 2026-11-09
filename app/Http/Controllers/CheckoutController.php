@@ -76,6 +76,9 @@ class CheckoutController extends Controller
             $request->ip(),
         );
 
+        // El navegador que compra queda habilitado para gestionar asistentes y transferencias
+        OrderManageController::grant($order);
+
         // Entradas sin cargo: se confirman sin pasar por Mercado Pago
         if ((float) $order->total <= 0) {
             $this->checkout->confirmPayment($order);
@@ -95,10 +98,11 @@ class CheckoutController extends Controller
 
         $order->load(['event.venue', 'items.ticketType', 'items.eventSeat.seat', 'payments']);
 
-        $tickets = $order->isPaid() ? $this->tickets->printable($order) : collect();
-        $qrs = $this->tickets->qrImages($tickets, 260);
+        $tickets = $order->isPaid() ? $this->tickets->printable($order, includeTransferred: true) : collect();
+        $qrs = $this->tickets->qrImages($tickets->reject(fn ($t) => $t->isTransferredAway()), 260);
+        $canManage = OrderManageController::canManage($order);
 
-        return view('public.order', compact('order', 'tickets', 'qrs'));
+        return view('public.order', compact('order', 'tickets', 'qrs', 'canManage'));
     }
 
     /** Descarga de las entradas en PDF */

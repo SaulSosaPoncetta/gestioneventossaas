@@ -80,15 +80,25 @@
 
         <div class="section-title mb-2">Ventas</div>
         <nav class="nav flex-column gap-1 mb-3">
-            <a class="nav-link disabled" href="#"><i class="bi bi-receipt me-2"></i>Órdenes</a>
-            <a class="nav-link disabled" href="#"><i class="bi bi-qr-code-scan me-2"></i>Control de ingreso</a>
-            <a class="nav-link disabled" href="#"><i class="bi bi-bar-chart me-2"></i>Reportes</a>
+            @if ($currentRole !== 'door')
+                <a class="nav-link @if(request()->routeIs('organizer.orders.*')) active @endif" href="{{ route('organizer.orders.index') }}">
+                    <i class="bi bi-receipt me-2"></i>Órdenes
+                </a>
+            @endif
+            <a class="nav-link" href="{{ url('/escaner') }}" target="_blank"><i class="bi bi-qr-code-scan me-2"></i>Escáner de ingreso <i class="bi bi-box-arrow-up-right small"></i></a>
+            @if ($currentRole !== 'door')
+                <a class="nav-link @if(request()->routeIs('organizer.reports.*')) active @endif" href="{{ route('organizer.reports.index') }}">
+                    <i class="bi bi-bar-chart me-2"></i>Reportes
+                </a>
+            @endif
         </nav>
 
         @if (in_array($currentRole, ['owner', 'admin'], true))
             <div class="section-title mb-2">Configuración</div>
             <nav class="nav flex-column gap-1 mb-3">
-                <a class="nav-link disabled" href="#"><i class="bi bi-people me-2"></i>Equipo</a>
+                <a class="nav-link @if(request()->routeIs('organizer.team.*')) active @endif" href="{{ route('organizer.team.index') }}">
+                    <i class="bi bi-people me-2"></i>Equipo
+                </a>
                 <a class="nav-link @if(request()->routeIs('organizer.mercadopago.*')) active @endif" href="{{ route('organizer.mercadopago.show') }}">
                     <i class="bi bi-wallet2 me-2"></i>Mercado Pago
                     @unless ($currentOrganizer->isMpConnected())<span class="badge text-bg-warning ms-1">!</span>@endunless
